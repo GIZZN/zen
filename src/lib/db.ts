@@ -1,11 +1,12 @@
 import { Pool } from 'pg';
 
-// Проверяем наличие обязательных переменных окружения
+// Поддерживаем как DATABASE_URL, так и отдельные переменные
+const DATABASE_URL = process.env.DATABASE_URL;
 const requiredEnvVars = ['DB_HOST', 'DB_PORT', 'DB_NAME', 'DB_USER', 'DB_PASSWORD'];
 const missingEnvVars = requiredEnvVars.filter(envVar => !process.env[envVar]);
 
-if (missingEnvVars.length > 0) {
-  throw new Error(`Missing required environment variables: ${missingEnvVars.join(', ')}`);
+if (!DATABASE_URL && missingEnvVars.length > 0) {
+  throw new Error(`Missing DATABASE_URL or required environment variables: ${missingEnvVars.join(', ')}`);
 }
 
 // Функция для настройки SSL
@@ -39,20 +40,31 @@ const getSSLConfig = () => {
 };
 
 // Создаем пул соединений с PostgreSQL
-const pool = new Pool({
-  host: process.env.DB_HOST,
-  port: parseInt(process.env.DB_PORT!),
-  database: process.env.DB_NAME,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  max: parseInt(process.env.DB_MAX_CONNECTIONS || '20'),
-  idleTimeoutMillis: parseInt(process.env.DB_IDLE_TIMEOUT || '30000'),
-  connectionTimeoutMillis: parseInt(process.env.DB_CONNECTION_TIMEOUT || '2000'),
-  ssl: getSSLConfig(),
-  // Дополнительные настройки безопасности
-  statement_timeout: parseInt(process.env.DB_STATEMENT_TIMEOUT || '30000'),
-  query_timeout: parseInt(process.env.DB_QUERY_TIMEOUT || '30000'),
-});
+const pool = new Pool(
+  DATABASE_URL 
+    ? {
+        connectionString: DATABASE_URL,
+        max: parseInt(process.env.DB_MAX_CONNECTIONS || '20'),
+        idleTimeoutMillis: parseInt(process.env.DB_IDLE_TIMEOUT || '30000'),
+        connectionTimeoutMillis: parseInt(process.env.DB_CONNECTION_TIMEOUT || '2000'),
+        ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+        statement_timeout: parseInt(process.env.DB_STATEMENT_TIMEOUT || '30000'),
+        query_timeout: parseInt(process.env.DB_QUERY_TIMEOUT || '30000'),
+      }
+    : {
+        host: process.env.DB_HOST,
+        port: parseInt(process.env.DB_PORT!),
+        database: process.env.DB_NAME,
+        user: process.env.DB_USER,
+        password: process.env.DB_PASSWORD,
+        max: parseInt(process.env.DB_MAX_CONNECTIONS || '20'),
+        idleTimeoutMillis: parseInt(process.env.DB_IDLE_TIMEOUT || '30000'),
+        connectionTimeoutMillis: parseInt(process.env.DB_CONNECTION_TIMEOUT || '2000'),
+        ssl: getSSLConfig(),
+        statement_timeout: parseInt(process.env.DB_STATEMENT_TIMEOUT || '30000'),
+        query_timeout: parseInt(process.env.DB_QUERY_TIMEOUT || '30000'),
+      }
+);
 
 // Функция для выполнения запросов
 export const query = async (text: string, params?: unknown[]) => {
