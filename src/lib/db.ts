@@ -9,35 +9,35 @@ if (!DATABASE_URL && missingEnvVars.length > 0) {
   throw new Error(`Missing DATABASE_URL or required environment variables: ${missingEnvVars.join(', ')}`);
 }
 
-// Функция для настройки SSL
-const getSSLConfig = () => {
-  if (process.env.NODE_ENV !== 'production') {
-    return false;
-  }
+// Функция для настройки SSL (оставлена для совместимости)
+// const getSSLConfig = () => {
+//   if (process.env.NODE_ENV !== 'production') {
+//     return false;
+//   }
 
-  // В production требуем SSL
-  const sslConfig: {
-    rejectUnauthorized: boolean;
-    ca?: string;
-    cert?: string;
-    key?: string;
-  } = {
-    rejectUnauthorized: true,
-  };
+//   // В production требуем SSL
+//   const sslConfig: {
+//     rejectUnauthorized: boolean;
+//     ca?: string;
+//     cert?: string;
+//     key?: string;
+//   } = {
+//     rejectUnauthorized: true,
+//   };
 
-  // Если предоставлен CA сертификат
-  if (process.env.DB_CA_CERT) {
-    sslConfig.ca = process.env.DB_CA_CERT;
-  }
+//   // Если предоставлен CA сертификат
+//   if (process.env.DB_CA_CERT) {
+//     sslConfig.ca = process.env.DB_CA_CERT;
+//   }
 
-  // Если предоставлены клиентские сертификаты
-  if (process.env.DB_CLIENT_CERT && process.env.DB_CLIENT_KEY) {
-    sslConfig.cert = process.env.DB_CLIENT_CERT;
-    sslConfig.key = process.env.DB_CLIENT_KEY;
-  }
+//   // Если предоставлены клиентские сертификаты
+//   if (process.env.DB_CLIENT_CERT && process.env.DB_CLIENT_KEY) {
+//     sslConfig.cert = process.env.DB_CLIENT_CERT;
+//     sslConfig.key = process.env.DB_CLIENT_KEY;
+//   }
 
-  return sslConfig;
-};
+//   return sslConfig;
+// };
 
 // Создаем пул соединений с PostgreSQL
 const pool = new Pool(
@@ -87,7 +87,7 @@ export const query = async (text: string, params?: unknown[]) => {
     // Подробная информация об ошибке для диагностики
     console.error('Database query error:', {
       error: error instanceof Error ? error.message : 'Unknown error',
-      code: (error as any)?.code,
+      code: (error as { code?: string })?.code,
       host: process.env.DB_HOST,
       database: process.env.DB_NAME,
       user: process.env.DB_USER,
