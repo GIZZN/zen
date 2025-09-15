@@ -6,7 +6,7 @@ const nextConfig: NextConfig = {
   
   // Настройки Turbopack
   turbopack: {
-    root: '.',
+    root: process.cwd(),
   },
   
   // Настройки изображений
