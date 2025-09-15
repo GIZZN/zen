@@ -60,7 +60,7 @@ const pool = new Pool(
         max: parseInt(process.env.DB_MAX_CONNECTIONS || '20'),
         idleTimeoutMillis: parseInt(process.env.DB_IDLE_TIMEOUT || '30000'),
         connectionTimeoutMillis: parseInt(process.env.DB_CONNECTION_TIMEOUT || '2000'),
-        ssl: getSSLConfig(),
+        ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
         statement_timeout: parseInt(process.env.DB_STATEMENT_TIMEOUT || '30000'),
         query_timeout: parseInt(process.env.DB_QUERY_TIMEOUT || '30000'),
       }
@@ -84,12 +84,15 @@ export const query = async (text: string, params?: unknown[]) => {
     
     return res;
   } catch (error) {
-    // Логируем ошибки, но скрываем чувствительную информацию в продакшене
-    if (process.env.NODE_ENV === 'development') {
-      console.error('Database query error:', error);
-    } else {
-      console.error('Database query failed');
-    }
+    // Подробная информация об ошибке для диагностики
+    console.error('Database query error:', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+      code: (error as any)?.code,
+      host: process.env.DB_HOST,
+      database: process.env.DB_NAME,
+      user: process.env.DB_USER,
+      query: text.substring(0, 100)
+    });
     throw error;
   }
 };

@@ -11,8 +11,19 @@ if (!process.env.JWT_SECRET) {
 const JWT_SECRET = process.env.JWT_SECRET;
 
 export async function POST(request: NextRequest) {
+  console.log('Login attempt started');
+  console.log('Environment check:', {
+    DB_HOST: process.env.DB_HOST,
+    DB_PORT: process.env.DB_PORT,
+    DB_NAME: process.env.DB_NAME,
+    DB_USER: process.env.DB_USER,
+    hasPassword: !!process.env.DB_PASSWORD,
+    hasJWT: !!process.env.JWT_SECRET
+  });
+  
   try {
     const { email, password } = await request.json();
+    console.log('Login request for email:', email);
 
     // Валидация
     if (!email || !password) {
