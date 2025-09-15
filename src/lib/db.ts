@@ -9,35 +9,6 @@ if (!DATABASE_URL && missingEnvVars.length > 0) {
   throw new Error(`Missing DATABASE_URL or required environment variables: ${missingEnvVars.join(', ')}`);
 }
 
-// Функция для настройки SSL (оставлена для совместимости)
-// const getSSLConfig = () => {
-//   if (process.env.NODE_ENV !== 'production') {
-//     return false;
-//   }
-
-//   // В production требуем SSL
-//   const sslConfig: {
-//     rejectUnauthorized: boolean;
-//     ca?: string;
-//     cert?: string;
-//     key?: string;
-//   } = {
-//     rejectUnauthorized: true,
-//   };
-
-//   // Если предоставлен CA сертификат
-//   if (process.env.DB_CA_CERT) {
-//     sslConfig.ca = process.env.DB_CA_CERT;
-//   }
-
-//   // Если предоставлены клиентские сертификаты
-//   if (process.env.DB_CLIENT_CERT && process.env.DB_CLIENT_KEY) {
-//     sslConfig.cert = process.env.DB_CLIENT_CERT;
-//     sslConfig.key = process.env.DB_CLIENT_KEY;
-//   }
-
-//   return sslConfig;
-// };
 
 // Создаем пул соединений с PostgreSQL
 const pool = new Pool(
