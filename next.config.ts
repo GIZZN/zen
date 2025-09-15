@@ -4,10 +4,10 @@ const nextConfig: NextConfig = {
   // Настройки безопасности
   poweredByHeader: false, // Убираем X-Powered-By заголовок
   
-  // Настройки Turbopack
-  turbopack: {
-    root: process.cwd(),
-  },
+  // Настройки Turbopack (убрано для совместимости с Vercel)
+  // turbopack: {
+  //   root: process.cwd(),
+  // },
   
   // Настройки изображений
   images: {
