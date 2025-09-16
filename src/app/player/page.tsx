@@ -1,15 +1,12 @@
 "use client";
-import { useEffect, useState } from 'react';
+import { useEffect, useState, memo, useCallback, useMemo, lazy, Suspense } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/app/contexts/AuthContext';
 import { useLocalPlayerStates } from '@/app/hooks/useLocalPlayerStates';
 import { useGlobalAudio } from '@/app/contexts/GlobalAudioContext';
-import ModalAlbum, { Album } from './modalalbum/modalalbum';
+import { Album } from './modalalbum/modalalbum';
 import { createPlayerHandlers, PlayerHandlersProps } from './handlers/playerHandlers';
 import { createClickOutsideHandler } from './utils/playerUtils';
-import LyricsModal from './components/LyricsModal';
-import PlaylistModal from './components/PlaylistModal';
-import CreateAlbumModal from './components/CreateAlbumModal';
 import HeroSection from './components/HeroSection';
 import AlbumsSection from './components/AlbumsSection';
 import TracksSection from './components/TracksSection';
@@ -17,7 +14,13 @@ import RecommendationsSection from './components/RecommendationsSection';
 import './player.css';
 import './modal.css';
 
-export default function PlayerPage() {
+// Lazy loading модальных окон для экономии памяти
+const LyricsModal = lazy(() => import('./components/LyricsModal'));
+const PlaylistModal = lazy(() => import('./components/PlaylistModal'));
+const CreateAlbumModal = lazy(() => import('./components/CreateAlbumModal'));
+const ModalAlbum = lazy(() => import('./modalalbum/modalalbum'));
+
+const PlayerPage = memo(() => {
   const { isAuthenticated, loading } = useAuth();
   const router = useRouter();
   
@@ -35,39 +38,31 @@ export default function PlayerPage() {
   const [showCreateAlbum, setShowCreateAlbum] = useState(false);
   const [isDragEnabled, setIsDragEnabled] = useState(true);
 
-  // Обработчики drag & drop
-  const handleDragStart = (e: React.DragEvent, index: number) => {
+  // Оптимизированные обработчики drag & drop с useCallback
+  const handleDragStart = useCallback((e: React.DragEvent, index: number) => {
     if (!isDragEnabled) {
       e.preventDefault();
       return;
     }
     setDraggedTrack(index);
     e.dataTransfer.effectAllowed = 'move';
-  };
+  }, [isDragEnabled]);
 
-  const handleDragOver = (e: React.DragEvent, index: number) => {
+  const handleDragOver = useCallback((e: React.DragEvent, index: number) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
     setDragOverIndex(index);
-  };
+  }, []);
 
-  const handleDragLeave = () => {
+  const handleDragLeave = useCallback(() => {
     setDragOverIndex(null);
-  };
+  }, []);
 
-  const handleDrop = (e: React.DragEvent, dropIndex: number) => {
-    e.preventDefault();
-    if (draggedTrack !== null && draggedTrack !== dropIndex) {
-      reorderUserTracks(draggedTrack, dropIndex);
-    }
+
+  const handleDragEnd = useCallback(() => {
     setDraggedTrack(null);
     setDragOverIndex(null);
-  };
-
-  const handleDragEnd = () => {
-    setDraggedTrack(null);
-    setDragOverIndex(null);
-  };
+  }, []);
   
   // Глобальный аудио контекст
   const globalAudio = useGlobalAudio();
@@ -94,6 +89,16 @@ export default function PlayerPage() {
     deleteAlbum,
   } = useLocalPlayerStates();
 
+  // Обновляем handleDrop с правильным использованием reorderUserTracks
+  const handleDropOptimized = useCallback((e: React.DragEvent, dropIndex: number) => {
+    e.preventDefault();
+    if (draggedTrack !== null && draggedTrack !== dropIndex) {
+      reorderUserTracks(draggedTrack, dropIndex);
+    }
+    setDraggedTrack(null);
+    setDragOverIndex(null);
+  }, [draggedTrack, reorderUserTracks]);
+
   // Используем глобальные состояния для воспроизведения
   const currentTrack = globalAudio.currentTrack;
   const isPlaying = globalAudio.isPlaying;
@@ -108,8 +113,24 @@ export default function PlayerPage() {
   const handlePreviousTrack = globalAudio.previousTrack;
   const handleNextTrack = globalAudio.nextTrack;
 
-  // Создаем экземпляр обработчиков
-  const handlersProps: PlayerHandlersProps = {
+  // Мемоизируем setters объект для предотвращения лишних рендеров
+  const setters = useMemo(() => ({
+    setIsMuted,
+    setVolumeBeforeMute,
+    setShowLyricsModal,
+    setCurrentLyrics,
+    setShowPlaylistModal,
+    setShowPlayerMenu,
+    setSelectedAlbum,
+    setShowAlbumModal,
+    setShowCreateAlbum,
+    setIsDragEnabled,
+    setDraggedTrack,
+    setDragOverIndex,
+  }), []);
+
+  // Мемоизируем создание обработчиков
+  const handlersProps: PlayerHandlersProps = useMemo(() => ({
     currentTrack,
     globalAudio,
     userTracks,
@@ -119,37 +140,34 @@ export default function PlayerPage() {
     reorderUserTracks,
     createAlbum,
     volume,
-    setters: {
-      setIsMuted,
-      setVolumeBeforeMute,
-      setShowLyricsModal,
-      setCurrentLyrics,
-      setShowPlaylistModal,
-      setShowPlayerMenu,
-      setSelectedAlbum,
-      setShowAlbumModal,
-      setShowCreateAlbum,
-      setIsDragEnabled,
-      setDraggedTrack,
-      setDragOverIndex,
-    }
-  };
+    setters
+  }), [currentTrack, globalAudio, userTracks, addToUserTracks, removeFromUserTracks, 
+      isTrackInUserTracks, reorderUserTracks, createAlbum, volume, setters]);
 
-  const handlers = createPlayerHandlers(handlersProps);
+  const handlers = useMemo(() => createPlayerHandlers(handlersProps), [handlersProps]);
 
-  // Адаптеры обработчиков для совместимости
-  const handleGlobalProgressClick = (e: React.MouseEvent<HTMLDivElement>) => 
-    handlers.handleGlobalProgressClick(e, isDragging, duration, currentTrack);
+  // Оптимизированные адаптеры обработчиков с useCallback
+  const handleGlobalProgressClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => 
+    handlers.handleGlobalProgressClick(e, isDragging, duration, currentTrack), 
+    [handlers, isDragging, duration, currentTrack]);
   
-  const handleGlobalVolumeChange = (e: React.MouseEvent<HTMLDivElement>) => 
-    handlers.handleGlobalVolumeChange(e, isDraggingVolume);
+  const handleGlobalVolumeChange = useCallback((e: React.MouseEvent<HTMLDivElement>) => 
+    handlers.handleGlobalVolumeChange(e, isDraggingVolume), 
+    [handlers, isDraggingVolume]);
   
-  const toggleMute = handlers.toggleMute;
-  const handleLyricsClick = handlers.handleLyricsClick;
-  const handleOpenAlbum = handlers.handleOpenAlbum;
-  const handleOpenPlaylistModal = handlers.handleOpenPlaylistModal;
-  const toggleDragMode = () => handlers.toggleDragMode(isDragEnabled);
-  const handleAddRecommendedTracks = handlers.handleAddRecommendedTracks;
+  const toggleMute = useCallback(() => handlers.toggleMute(), [handlers]);
+  const handleLyricsClick = useCallback(() => handlers.handleLyricsClick(), [handlers]);
+  const handleOpenAlbum = useCallback((album: Album) => handlers.handleOpenAlbum(album), [handlers]);
+  const handleOpenPlaylistModal = useCallback(() => handlers.handleOpenPlaylistModal(), [handlers]);
+  const toggleDragMode = useCallback(() => handlers.toggleDragMode(isDragEnabled), [handlers, isDragEnabled]);
+  const handleAddRecommendedTracks = useCallback(() => handlers.handleAddRecommendedTracks(), [handlers]);
+
+  // Оптимизированные коллбэки для закрытия модальных окон
+  const closeCreateAlbum = useCallback(() => setShowCreateAlbum(false), []);
+  const closeLyricsModal = useCallback(() => setShowLyricsModal(false), []);
+  const closePlaylistModal = useCallback(() => setShowPlaylistModal(false), []);
+  const closeAlbumModal = useCallback(() => setShowAlbumModal(false), []);
+  const openCreateAlbum = useCallback(() => setShowCreateAlbum(true), []);
 
   useEffect(() => {
     if (!loading && !isAuthenticated) {
@@ -157,29 +175,34 @@ export default function PlayerPage() {
     }
   }, [isAuthenticated, loading, router]);
 
-  // Синхронизируем список треков с глобальным контекстом
+  // Оптимизированная синхронизация треков с debouncing
   useEffect(() => {
-    globalAudio.updateTrackList(userTracks);
+    const timeoutId = setTimeout(() => {
+      globalAudio.updateTrackList(userTracks);
+    }, 100); // Debounce для предотвращения частых обновлений
+
+    return () => clearTimeout(timeoutId);
   }, [userTracks, globalAudio]);
+
+  // Мемоизированный обработчик клика вне элемента
+  const clickOutsideHandler = useMemo(() => createClickOutsideHandler(
+    showPlayerMenu,
+    showLyricsModal,
+    showPlaylistModal,
+    {
+      setShowPlayerMenu,
+      setShowLyricsModal,
+      setShowPlaylistModal
+    }
+  ), [showPlayerMenu, showLyricsModal, showPlaylistModal]);
 
   // Закрытие меню при клике вне его
   useEffect(() => {
-    const handleClickOutside = createClickOutsideHandler(
-      showPlayerMenu,
-      showLyricsModal,
-      showPlaylistModal,
-      {
-        setShowPlayerMenu,
-        setShowLyricsModal,
-        setShowPlaylistModal
-      }
-    );
-
-    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('mousedown', clickOutsideHandler);
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('mousedown', clickOutsideHandler);
     };
-  }, [showPlayerMenu, showLyricsModal, showPlaylistModal]);
+  }, [clickOutsideHandler]);
 
   if (loading) {
     return (
@@ -236,7 +259,7 @@ export default function PlayerPage() {
         {/* Секция альбомов */}
         <AlbumsSection
           albums={albums}
-          onCreateAlbum={() => setShowCreateAlbum(true)}
+          onCreateAlbum={openCreateAlbum}
           onOpenAlbum={handleOpenAlbum}
           onDeleteAlbum={deleteAlbum}
           onPlayTrack={handleTrackPlay}
@@ -257,7 +280,7 @@ export default function PlayerPage() {
           onDragStart={handleDragStart}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
-          onDrop={handleDrop}
+          onDrop={handleDropOptimized}
           onDragEnd={handleDragEnd}
         />
 
@@ -273,32 +296,52 @@ export default function PlayerPage() {
         />
       </main>
       
-      {/* Модальные окна */}
-      <CreateAlbumModal 
-        isOpen={showCreateAlbum}
-        userTracks={userTracks}
-        onClose={() => setShowCreateAlbum(false)}
-        onCreateAlbum={createAlbum}
-      />
+      {/* Оптимизированные модальные окна с lazy loading */}
+      {showCreateAlbum && (
+        <Suspense fallback={<div className="loading-spinner" />}>
+          <CreateAlbumModal 
+            isOpen={showCreateAlbum}
+            userTracks={userTracks}
+            onClose={closeCreateAlbum}
+            onCreateAlbum={createAlbum}
+          />
+        </Suspense>
+      )}
 
-      <LyricsModal 
-        isOpen={showLyricsModal}
-        currentTrack={currentTrack}
-        currentLyrics={currentLyrics}
-        onClose={() => setShowLyricsModal(false)}
-      />
+      {showLyricsModal && (
+        <Suspense fallback={<div className="loading-spinner" />}>
+          <LyricsModal 
+            isOpen={showLyricsModal}
+            currentTrack={currentTrack}
+            currentLyrics={currentLyrics}
+            onClose={closeLyricsModal}
+          />
+        </Suspense>
+      )}
 
-      <PlaylistModal 
-        isOpen={showPlaylistModal}
-        userTracks={userTracks}
-        onClose={() => setShowPlaylistModal(false)}
-      />
+      {showPlaylistModal && (
+        <Suspense fallback={<div className="loading-spinner" />}>
+          <PlaylistModal 
+            isOpen={showPlaylistModal}
+            userTracks={userTracks}
+            onClose={closePlaylistModal}
+          />
+        </Suspense>
+      )}
 
-      <ModalAlbum 
-        isOpen={showAlbumModal}
-        album={selectedAlbum}
-        onClose={() => setShowAlbumModal(false)}
-      />
+      {showAlbumModal && selectedAlbum && (
+        <Suspense fallback={<div className="loading-spinner" />}>
+          <ModalAlbum 
+            isOpen={showAlbumModal}
+            album={selectedAlbum}
+            onClose={closeAlbumModal}
+          />
+        </Suspense>
+      )}
     </div>
   );
-}
+});
+
+PlayerPage.displayName = 'PlayerPage';
+
+export default PlayerPage;

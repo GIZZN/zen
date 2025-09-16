@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from 'react';
+import React, { useState, memo } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import './Hero.css';
@@ -7,7 +7,7 @@ import { useAuth } from '@/app/contexts/AuthContext';
 import { useGlobalAudio } from '@/app/contexts/GlobalAudioContext';
 import AuthModal from '@/app/Components/Auth/AuthModal';
 
-const Hero = () => {
+const Hero = memo(() => {
   const { isAuthenticated } = useAuth();
   const { currentTrack, isPlaying, currentTime, duration, pauseTrack, resumeTrack } = useGlobalAudio();
   const router = useRouter();
@@ -123,6 +123,8 @@ const Hero = () => {
       />
     </section>
   );
-};
+});
+
+Hero.displayName = 'Hero';
 
 export default Hero;

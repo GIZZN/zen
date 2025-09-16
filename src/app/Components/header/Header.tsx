@@ -1,11 +1,11 @@
 "use client";
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, memo } from 'react';
 import Link from 'next/link';
 import './Header.css';
 import { useAuth } from '@/app/contexts/AuthContext';
 import { useGlobalAudio } from '@/app/contexts/GlobalAudioContext';
 
-const Header = () => {
+const Header = memo(() => {
   const { user, isAuthenticated, logout } = useAuth();
   const { clearAudioState } = useGlobalAudio();
   const [showUserMenu, setShowUserMenu] = useState(false);
@@ -115,6 +115,8 @@ const Header = () => {
       </div>
     </header>
   );
-};
+});
+
+Header.displayName = 'Header';
 
 export default Header;

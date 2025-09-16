@@ -2,12 +2,51 @@ import { Track } from '../modalalbum/modalalbum';
 import { EQUALIZER_CONFIG } from '../constants/playerConstants';
 
 // Утилиты для эквалайзера
-export const generateEqualizerBars = () => {
-  return Array.from({ length: EQUALIZER_CONFIG.BARS_COUNT }, (_, i) => ({
+export const generateEqualizerBars = (config = EQUALIZER_CONFIG) => {
+  return Array.from({ length: config.BARS_COUNT }, (_, i) => ({
     key: i,
-    animationDelay: `${(i * EQUALIZER_CONFIG.BASE_ANIMATION_DELAY)}s`,
-    animationDuration: `${EQUALIZER_CONFIG.BASE_ANIMATION_DURATION + (i % EQUALIZER_CONFIG.ANIMATION_VARIATION_STEPS) * EQUALIZER_CONFIG.ANIMATION_VARIATION}s`
+    animationDelay: `${(i * config.BASE_ANIMATION_DELAY)}s`,
+    animationDuration: `${config.BASE_ANIMATION_DURATION + (i % config.ANIMATION_VARIATION_STEPS) * config.ANIMATION_VARIATION}s`
   }));
+};
+
+// Тип для полосок эквалайзера
+type EqualizerBar = {
+  key: number;
+  animationDelay: string;
+  animationDuration: string;
+};
+
+// Оптимизированная генерация для слабых устройств
+export const generateOptimizedEqualizerBars = (adaptiveConfig: {
+  barsCount: number;
+  animationDelay: number;
+  animationDuration: number;
+  animationVariation: number;
+}): EqualizerBar[] => {
+  // Кешируем результат для избежания пересчетов
+  const cacheKey = `${adaptiveConfig.barsCount}-${adaptiveConfig.animationDelay}-${adaptiveConfig.animationDuration}`;
+  
+  if (typeof window !== 'undefined') {
+    const windowWithCache = window as Window & { __equalizerCache?: Record<string, EqualizerBar[]> };
+    const cached = windowWithCache.__equalizerCache?.[cacheKey];
+    if (cached) return cached;
+  }
+  
+  const bars: EqualizerBar[] = Array.from({ length: adaptiveConfig.barsCount }, (_, i) => ({
+    key: i,
+    animationDelay: `${(i * adaptiveConfig.animationDelay)}s`,
+    animationDuration: `${adaptiveConfig.animationDuration + (i % 5) * adaptiveConfig.animationVariation}s`
+  }));
+  
+  // Кешируем результат
+  if (typeof window !== 'undefined') {
+    const windowWithCache = window as Window & { __equalizerCache?: Record<string, EqualizerBar[]> };
+    windowWithCache.__equalizerCache = windowWithCache.__equalizerCache || {};
+    windowWithCache.__equalizerCache[cacheKey] = bars;
+  }
+  
+  return bars;
 };
 
 // Утилиты для обработки событий

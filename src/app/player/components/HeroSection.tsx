@@ -1,9 +1,11 @@
 'use client';
 
-import React from 'react';
+import React, { memo, useMemo, useEffect } from 'react';
 import Image from 'next/image';
 import { Track } from '../modalalbum/modalalbum';
-import { generateEqualizerBars, formatTime } from '../utils/playerUtils';
+import { generateOptimizedEqualizerBars, formatTime } from '../utils/playerUtils';
+import { useSimpleEqualizerConfig } from '@/app/hooks/useSimpleEqualizerConfig';
+import { forceGarbageCollection } from '@/app/hooks/useMemoryMonitor';
 import '../player.css';
 
 interface HeroSectionProps {
@@ -41,7 +43,7 @@ interface HeroSectionProps {
   isTrackInUserTracks: (id: number) => boolean;
 }
 
-export default function HeroSection({
+const HeroSection = memo(function HeroSection({
   currentTrack,
   isPlaying,
   currentTime,
@@ -75,20 +77,100 @@ export default function HeroSection({
   onOpenCreateAlbum,
   isTrackInUserTracks
 }: HeroSectionProps) {
-  const equalizerBars = generateEqualizerBars();
+  // Получаем простую конфигурацию эквалайзера
+  const adaptiveConfig = useSimpleEqualizerConfig();
+
+  // Автоматическая очистка памяти для слабых устройств
+  useEffect(() => {
+    if (adaptiveConfig.memoryOptimized) {
+      // Очищаем память каждые 30 секунд на слабых устройствах
+      const interval = setInterval(() => {
+        forceGarbageCollection();
+      }, 30000);
+
+      return () => clearInterval(interval);
+    }
+  }, [adaptiveConfig.memoryOptimized]);
+  
+  // Мемоизируем генерацию полосок эквалайзера с адаптивной конфигурацией
+  const equalizerBars = useMemo(() => 
+    generateOptimizedEqualizerBars(adaptiveConfig), 
+    [adaptiveConfig]
+  );
+
+  // Мемоизируем отдельный компонент полоски с агрессивной оптимизацией памяти
+  const EqualizerBar = useMemo(() => memo(function EqualizerBar({ 
+    barKey, 
+    animationDelay, 
+    animationDuration, 
+    isPlaying 
+  }: {
+    barKey: number;
+    animationDelay: string;
+    animationDuration: string;
+    isPlaying: boolean;
+  }) {
+    const shouldAnimate = isPlaying && !adaptiveConfig.disableAnimation;
+    
+    // Агрессивная оптимизация стилей для экономии памяти
+    const baseStyle: React.CSSProperties = {
+      animationDelay: shouldAnimate ? animationDelay : '0s',
+      animationDuration: shouldAnimate ? animationDuration : '0s',
+      willChange: shouldAnimate ? 'transform' : 'auto',
+      opacity: adaptiveConfig.reducedIntensity ? 0.6 : 1
+    };
+    
+    // Добавляем GPU оптимизации только если не оптимизируем память
+    if (!adaptiveConfig.memoryOptimized) {
+      baseStyle.transform = 'translateZ(0)';
+      baseStyle.backfaceVisibility = 'hidden';
+      baseStyle.contain = 'layout style paint';
+    } else {
+      // Для слабых устройств используем минимум стилей
+      baseStyle.contain = 'layout';
+    }
+    
+    return (
+      <div 
+        key={barKey}
+        className={`hero-eq-bar ${shouldAnimate ? 'animated' : 'static'}`}
+        style={baseStyle}
+      />
+    );
+  }), [adaptiveConfig.disableAnimation, adaptiveConfig.reducedIntensity, adaptiveConfig.memoryOptimized]);
+
 
   return (
     <section className="hero-section">
-      {/* Фоновый эквалайзер */}
-      <div className="hero-equalizer">
+      {/* Агрессивно оптимизированный эквалайзер для слабых устройств */}
+      <div 
+        className={`hero-equalizer ${isPlaying && !adaptiveConfig.disableAnimation ? 'playing' : 'paused'}`}
+        style={{
+          // Базовые оптимизации
+          willChange: (isPlaying && !adaptiveConfig.disableAnimation) ? 'opacity' : 'auto',
+          opacity: adaptiveConfig.reducedIntensity ? 0.7 : 1,
+          // Условные оптимизации в зависимости от устройства
+          ...(adaptiveConfig.memoryOptimized ? {
+            // Для очень слабых устройств - минимум стилей
+            contain: 'layout',
+            // Убираем GPU слой для экономии памяти
+            transform: 'none'
+          } : {
+            // Для нормальных устройств - полные оптимизации
+            contain: 'layout style paint',
+            transform: 'translateZ(0)',
+            isolation: 'isolate',
+            backfaceVisibility: 'hidden'
+          })
+        }}
+      >
         {equalizerBars.map((bar) => (
-          <div 
-            key={bar.key} 
-            className="hero-eq-bar" 
-            style={{
-              animationDelay: bar.animationDelay,
-              animationDuration: bar.animationDuration
-            }}
+          <EqualizerBar
+            key={bar.key}
+            barKey={bar.key}
+            animationDelay={bar.animationDelay}
+            animationDuration={bar.animationDuration}
+            isPlaying={isPlaying}
           />
         ))}
       </div>
@@ -170,6 +252,21 @@ export default function HeroSection({
         </div>
 
         <div className="player-right">
+          {/* Кнопка repeat для мобильных устройств */}
+          <button 
+            className={`control-btn repeat-btn mobile-repeat-btn ${repeatMode !== 'off' ? 'active' : ''}`} 
+            onClick={onToggleRepeat}
+            title="Повтор"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M7 7h10v3l4-4-4-4v3H5v6h2V7zM17 17H7v-3l-4 4 4 4v-3h12v-6h-2v4z"/>
+            </svg>
+            {repeatMode !== 'off' && (
+              <span className="repeat-count">
+                {repeatMode === 'double' ? '2' : '∞'}
+              </span>
+            )}
+          </button>
           <button 
             className={`control-btn add-to-playlist-btn ${currentTrack && isTrackInUserTracks(currentTrack.id) ? 'added' : ''}`}
             onClick={onAddToPlaylist}
@@ -254,4 +351,6 @@ export default function HeroSection({
       </div>
     </section>
   );
-}
+});
+
+export default HeroSection;

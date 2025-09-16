@@ -7,11 +7,15 @@ export type { PrismaticBurstProps } from './PrismaticBurst';
 import PrismaticBurstComponent from './PrismaticBurst';
 import { withPerformanceOptimization, PrismaticBurstFallback } from './withPerformanceOptimization';
 
-// Мгновенная версия без задержек для главной страницы
-import React from 'react';
-
-export const PrismaticBurstInstant = (props: any) => 
-  React.createElement(PrismaticBurstComponent, { ...props, lazy: false, priority: true });
+// Мгновенная версия без задержек для главной страницы (с оптимизациями)
+export const PrismaticBurstInstant = withPerformanceOptimization(
+  PrismaticBurstComponent,
+  {
+    enablePerformanceMonitoring: true,
+    fallbackComponent: PrismaticBurstFallback,
+    priority: true // Приоритетная загрузка БЕЗ lazy loading
+  }
+);
 
 // Максимально оптимизированная версия для слабых устройств
 export const PrismaticBurstOptimized = withPerformanceOptimization(

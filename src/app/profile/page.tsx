@@ -1,19 +1,21 @@
 "use client";
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, memo, useMemo, lazy, Suspense } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/app/contexts/AuthContext';
 import { useGlobalAudio } from '@/app/contexts/GlobalAudioContext';
-import { PrismaticBurstOptimized } from '../Components/backgraund';
+import { PrismaticBurstInstant } from '../Components/backgraund';
 import { ProfileData, ProfileAlbum } from './types/profileTypes';
 import { createProfileHandlers, ProfileHandlersProps } from './handlers/profileHandlers';
 import ProfileHeader from './components/ProfileHeader';
 import ProfileDetails from './components/ProfileDetails';
 import ActivitySection from './components/ActivitySection';
 import PlaylistsSection from './components/PlaylistsSection';
-import ProfileAlbumModal from './components/ProfileAlbumModal';
 import './profile.css';
 
-const ProfilePage = () => {
+// Lazy loading для модального окна
+const ProfileAlbumModal = lazy(() => import('./components/ProfileAlbumModal'));
+
+const ProfilePage = memo(() => {
   const { isAuthenticated, loading } = useAuth();
   const globalAudio = useGlobalAudio();
   const router = useRouter();
@@ -33,8 +35,8 @@ const ProfilePage = () => {
     website: ''
   });
 
-  // Создаем экземпляр обработчиков
-  const handlersProps: ProfileHandlersProps = {
+  // Мемоизируем создание обработчиков для предотвращения лишних ре-рендеров
+  const handlersProps: ProfileHandlersProps = useMemo(() => ({
     router,
     globalAudio,
     setProfileData,
@@ -45,30 +47,34 @@ const ProfilePage = () => {
     setIsEditing,
     setSelectedAlbum,
     setShowAlbumModal,
-  };
+  }), [router, globalAudio]);
 
-  const handlers = createProfileHandlers(handlersProps);
+  const handlers = useMemo(() => createProfileHandlers(handlersProps), [handlersProps]);
 
-  // Обработчики событий
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  // Оптимизированные обработчики событий с useCallback
+  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setEditData(prev => ({
       ...prev,
       [name]: value
     }));
     setError('');
-  };
+  }, []);
 
-  const handleSaveProfile = () => {
+  const handleSaveProfile = useCallback(() => {
     handlers.saveProfile(editData, profileData);
-  };
+  }, [handlers, editData, profileData]);
 
-  const handleCancelEdit = () => {
+  const handleCancelEdit = useCallback(() => {
     handlers.handleCancelEdit(profileData);
-  };
+  }, [handlers, profileData]);
 
-  // Мемоизированная функция загрузки профиля
-  const fetchProfile = useCallback(async () => {
+  // Оптимизированные коллбэки для модальных окон
+  const handleStartEdit = useCallback(() => setIsEditing(true), []);
+  const handleCloseAlbumModal = useCallback(() => setShowAlbumModal(false), []);
+
+  // Стабильная функция загрузки профиля (без useCallback для избежания циклов)
+  const fetchProfile = async () => {
     try {
       setProfileLoading(true);
       const token = localStorage.getItem('authToken');
@@ -101,7 +107,7 @@ const ProfilePage = () => {
     } finally {
       setProfileLoading(false);
     }
-  }, []);
+  };
 
   // Эффекты
   useEffect(() => {
@@ -111,17 +117,17 @@ const ProfilePage = () => {
   }, [isAuthenticated, loading, router]);
 
   useEffect(() => {
-    if (isAuthenticated && !loading) {
+    if (isAuthenticated && !loading && !profileData) {
       fetchProfile();
     }
-  }, [isAuthenticated, loading, fetchProfile]);
+  }, [isAuthenticated, loading, profileData]); // Добавляем проверку profileData
 
   // Состояния загрузки
   if (loading || profileLoading) {
     return (
       <div className="profile-page">
         <div className="profile-background">
-          <PrismaticBurstOptimized 
+          <PrismaticBurstInstant 
             colors={['#667eea', '#764ba2', '#f093fb', '#f5576c', '#4facfe', '#00f2fe']}
             intensity={0.8}
             speed={0.5}
@@ -143,7 +149,7 @@ const ProfilePage = () => {
     return (
       <div className="profile-page">
         <div className="profile-background">
-          <PrismaticBurstOptimized 
+          <PrismaticBurstInstant 
             colors={['#667eea', '#764ba2', '#f093fb', '#f5576c', '#4facfe', '#00f2fe']}
             intensity={0.8}
             speed={0.5}
@@ -164,7 +170,7 @@ const ProfilePage = () => {
     <div className="profile-page">
       {/* Фоновый эффект PrismaticBurst */}
       <div className="profile-background">
-        <PrismaticBurstOptimized 
+        <PrismaticBurstInstant 
           colors={['#667eea', '#764ba2', '#f093fb', '#f5576c', '#4facfe', '#00f2fe']}
           intensity={0.8}
           speed={0.5}
@@ -178,7 +184,7 @@ const ProfilePage = () => {
           isEditing={isEditing}
           saveLoading={saveLoading}
           error={error}
-          onStartEdit={() => setIsEditing(true)}
+          onStartEdit={handleStartEdit}
           onSaveProfile={handleSaveProfile}
           onCancelEdit={handleCancelEdit}
         />
@@ -205,15 +211,21 @@ const ProfilePage = () => {
         />
       </div>
 
-      {/* Модальное окно альбома */}
-      <ProfileAlbumModal
-        isOpen={showAlbumModal}
-        album={selectedAlbum}
-        globalAudio={globalAudio}
-        onClose={() => setShowAlbumModal(false)}
-      />
+      {/* Оптимизированное модальное окно альбома с lazy loading */}
+      {showAlbumModal && selectedAlbum && (
+        <Suspense fallback={<div className="loading-spinner" />}>
+          <ProfileAlbumModal
+            isOpen={showAlbumModal}
+            album={selectedAlbum}
+            globalAudio={globalAudio}
+            onClose={handleCloseAlbumModal}
+          />
+        </Suspense>
+      )}
     </div>
   );
-};
+});
+
+ProfilePage.displayName = 'ProfilePage';
 
 export default ProfilePage;

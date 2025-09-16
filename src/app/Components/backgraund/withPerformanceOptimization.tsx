@@ -1,12 +1,28 @@
 "use client";
-import React, { ComponentType, memo, Suspense, lazy } from 'react';
-import { usePerformanceOptimization } from '@/app/hooks/usePerformanceOptimization';
+import React, { ComponentType, memo, Suspense, lazy, useMemo } from 'react';
 
 interface WithPerformanceOptimizationProps {
   enablePerformanceMonitoring?: boolean;
   fallbackComponent?: ComponentType;
   priority?: boolean;
 }
+
+// Статическое определение производительности устройства (БЕЗ ререндеров)
+const getDeviceQuality = (): 'low' | 'medium' | 'high' => {
+  if (typeof window === 'undefined') return 'medium';
+  
+  const navigator = window.navigator as any;
+  const cores = navigator.hardwareConcurrency || 2;
+  const memory = navigator.deviceMemory;
+  const isMobile = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+  
+  // Простая классификация БЕЗ постоянного мониторинга
+  if (memory && memory <= 2) return 'low';
+  if (isMobile || cores <= 4) return 'low';
+  if (memory && memory <= 4) return 'medium';
+  if (cores <= 6) return 'medium';
+  return 'high';
+};
 
 export function withPerformanceOptimization<T extends object>(
   WrappedComponent: ComponentType<T>,
@@ -19,7 +35,9 @@ export function withPerformanceOptimization<T extends object>(
   } = options;
 
   const OptimizedComponent = memo((props: T) => {
-    const { getOptimalQuality, isLowPerformanceDevice } = usePerformanceOptimization();
+    // Статическое определение качества (вычисляется ОДИН раз)
+    const deviceQuality = useMemo(() => getDeviceQuality(), []);
+    const isLowPerformanceDevice = deviceQuality === 'low';
 
     // Для слабых устройств показываем fallback или упрощенную версию
     if (isLowPerformanceDevice && FallbackComponent && !priority) {
@@ -29,7 +47,7 @@ export function withPerformanceOptimization<T extends object>(
     const optimizedProps = {
       ...props,
       ...(enablePerformanceMonitoring && {
-        quality: getOptimalQuality(),
+        quality: deviceQuality,
         lazy: !priority,
         priority
       })
@@ -44,7 +62,7 @@ export function withPerformanceOptimization<T extends object>(
   if (!priority) {
     const LazyComponent = lazy(() => Promise.resolve({ default: OptimizedComponent }));
     
-    return memo((props: T) => (
+    const LazyWrapper = memo((props: T) => (
       <Suspense fallback={
         FallbackComponent ? 
           <FallbackComponent {...(props as any)} /> : 
@@ -53,6 +71,10 @@ export function withPerformanceOptimization<T extends object>(
         <LazyComponent {...props} />
       </Suspense>
     ));
+    
+    LazyWrapper.displayName = `LazyWrapper(${WrappedComponent.displayName || WrappedComponent.name})`;
+    
+    return LazyWrapper;
   }
 
   return OptimizedComponent;

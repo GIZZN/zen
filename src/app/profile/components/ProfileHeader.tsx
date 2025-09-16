@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { memo } from 'react';
 import { ProfileData } from '../types/profileTypes';
 import '../profile.css';
 
@@ -14,7 +14,7 @@ interface ProfileHeaderProps {
   onCancelEdit: () => void;
 }
 
-export default function ProfileHeader({
+const ProfileHeader = memo(function ProfileHeader({
   profileData,
   isEditing,
   saveLoading,
@@ -110,4 +110,6 @@ export default function ProfileHeader({
       )}
     </>
   );
-}
+});
+
+export default ProfileHeader;

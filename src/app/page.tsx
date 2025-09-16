@@ -1,28 +1,33 @@
 "use client";
+import React, { memo } from 'react';
 import styles from "./page.module.css";
 import { PrismaticBurstInstant } from '@/app/Components/backgraund';
 import Hero from '@/app/Components/Hero/Hero';
 
-export default function Home() {
+const Home = memo(() => {
   return (
     <div className={styles.page}>
       <main>
-        <div style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0 }}>
+        <div style={{ 
+          width: '100%', 
+          height: '100vh', 
+          position: 'fixed', 
+          top: 0, 
+          left: 0, 
+          zIndex: -1 
+        }}>
             <PrismaticBurstInstant
-            animationType="rotate3d"
-            intensity={2}
+            colors={['#667eea', '#764ba2', '#f093fb', '#f5576c', '#4facfe', '#00f2fe']}
+            intensity={0.8}
             speed={0.5}
-            distort={1.0}
-            paused={false}
-            offset={{ x: 0, y: 0 }}
-            hoverDampness={0.25}
-            rayCount={24}
-            mixBlendMode="lighten"
-            colors={['#1e90ff', '#00bfff', '#4169e1', '#9370db', '#20b2aa', '#87ceeb']}
           />
         </div>
         <Hero />
       </main>
     </div>
   );
-}
+});
+
+Home.displayName = 'Home';
+
+export default Home;
