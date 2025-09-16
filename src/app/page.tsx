@@ -1,6 +1,6 @@
 "use client";
 import styles from "./page.module.css";
-import PrismaticBurst from '@/app/Components/backgraund/PrismaticBurst';
+import { PrismaticBurstInstant } from '@/app/Components/backgraund';
 import Hero from '@/app/Components/Hero/Hero';
 
 export default function Home() {
@@ -8,7 +8,7 @@ export default function Home() {
     <div className={styles.page}>
       <main>
         <div style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0 }}>
-          <PrismaticBurst
+            <PrismaticBurstInstant
             animationType="rotate3d"
             intensity={2}
             speed={0.5}

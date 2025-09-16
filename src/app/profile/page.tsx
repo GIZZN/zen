@@ -3,7 +3,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/app/contexts/AuthContext';
 import { useGlobalAudio } from '@/app/contexts/GlobalAudioContext';
-import PrismaticBurst from '../Components/backgraund/PrismaticBurst';
+import { PrismaticBurstOptimized } from '../Components/backgraund';
 import { ProfileData, ProfileAlbum } from './types/profileTypes';
 import { createProfileHandlers, ProfileHandlersProps } from './handlers/profileHandlers';
 import ProfileHeader from './components/ProfileHeader';
@@ -121,7 +121,7 @@ const ProfilePage = () => {
     return (
       <div className="profile-page">
         <div className="profile-background">
-          <PrismaticBurst 
+          <PrismaticBurstOptimized 
             colors={['#667eea', '#764ba2', '#f093fb', '#f5576c', '#4facfe', '#00f2fe']}
             intensity={0.8}
             speed={0.5}
@@ -143,7 +143,7 @@ const ProfilePage = () => {
     return (
       <div className="profile-page">
         <div className="profile-background">
-          <PrismaticBurst 
+          <PrismaticBurstOptimized 
             colors={['#667eea', '#764ba2', '#f093fb', '#f5576c', '#4facfe', '#00f2fe']}
             intensity={0.8}
             speed={0.5}
@@ -164,7 +164,7 @@ const ProfilePage = () => {
     <div className="profile-page">
       {/* Фоновый эффект PrismaticBurst */}
       <div className="profile-background">
-        <PrismaticBurst 
+        <PrismaticBurstOptimized 
           colors={['#667eea', '#764ba2', '#f093fb', '#f5576c', '#4facfe', '#00f2fe']}
           intensity={0.8}
           speed={0.5}
