@@ -31,27 +31,30 @@ export const RECOMMENDED_TRACKS: Track[] = [
   },
   { 
     id: 14, 
-    title: "Bad Habit", 
-    artist: "Steve Lacy", 
-    duration: "3:51", 
-    cover: "/api/placeholder/48/48", 
-    genre: "R&B" 
+    title: "Kill Yourself (Part III)", 
+    artist: "$uicideboy$", 
+    duration: "2:25", 
+    cover: "/4.png", 
+    genre: "Rap", 
+    audioSrc: "/saund/25-28_Hz_uicideboy_-_Kill_Yourself_Part_III_-_Low_Bass_By_Kpaca_Wella_(SkySound.cc).mp3"
   },
   { 
     id: 15, 
-    title: "Anti-Hero", 
-    artist: "Taylor Swift", 
-    duration: "3:20", 
-    cover: "/api/placeholder/48/48", 
-    genre: "Pop" 
+    title: "Right Here",
+    artist: "lil peep",   
+    duration: "2:16", 
+    cover: "/5.png", 
+    genre: "Alternative Rap",   
+    audioSrc: "/saund/lil_peep_-_right_here_(SkySound.cc).mp3"
   },
   { 
     id: 16, 
-    title: "Unholy", 
-    artist: "Sam Smith ft. Kim Petras", 
+    title: "Faint", 
+    artist: "Linkin Park", 
     duration: "2:36", 
-    cover: "/api/placeholder/48/48", 
-    genre: "Pop" 
+    cover: "/6.png", 
+    genre: "Rock", 
+    audioSrc: "/saund/Linkin_Park_-_Faint_2003_(SkySound.cc).mp3"
   },
 ];
 
